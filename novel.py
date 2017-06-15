@@ -8,10 +8,23 @@
 import re
 import datetime
 import time
+import sys
 import urllib  # 网络访问模块
 import MySQLdb  # 数据库模块
 
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 start = datetime.datetime.now()  # 开始计时
+
+
+# 写入时间到txt
+def Time(content):
+    output = open('time.txt', 'a')
+    output.write(content)
+    output.close()
+
+Time('\n------------------------------------- %s -----------------------------------------'% time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 
 
 # 数据库
@@ -29,9 +42,7 @@ class sql:
     # 插入目录到数据库
     def addNovels(self, sort, nmae, imgurl, description, stat, author):
         cur = self.conn.cursor()
-        cur.execute(
-            "insert into novel(sort,nmae,imgurl,description,state,author) values(%s,'%s','%s','%s','%s','%s') " % (
-            sort, nmae, imgurl, description, stat, author))
+        cur.execute("insert into novel(sort,nmae,imgurl,description,state,author) values(%s,'%s','%s','%s','%s','%s') " % (sort, nmae, imgurl, description, stat, author))
         lastrowid = cur.lastrowid  # 获取当前插入的id
         cur.close()
         self.conn.commit()
@@ -40,10 +51,9 @@ class sql:
     # 插入章节到数据库
     def addChapters(self, novelid, title, content):
         cur = self.conn.cursor()
-        cur.execute("insert into chapter(novelid,title,content) values(%s,'%s','%s')" % (novelid, title, content))
+        cur.execute("insert into chapter(novelid,title,content) values(%s,'%s','%s')" %(novelid, title, content))
         cur.close()
         self.conn.commit()
-
 
 domin = 'http://www.quanshuwang.com'  # 全书网首页url
 
@@ -69,13 +79,14 @@ def getChapterContent(url):
     reg = r'style5\(\);</script>(.*?)<script type="text/javascript">'
     return re.findall(reg, html)[0]
 
-
 mysql = sql()  # 实例类
+
 
 for sort in range(1, 10):
     for novel in getSortList(sort):  # 遍历所有小说目录
         lastrowid = mysql.addNovels(sort, novel[1], 'img', 'des', 'sta', 'au')
-        print u'正在保存《%s》到数据库' % novel[1]
+        Time('\n《%s》爬取开始时间：%s' % (novel[1], datetime.datetime.now()))
+        print u'正在保存《%s》到数据库'%novel[1]
         for chapter in getNovelList(domin + novel[0]):  # 遍历所有小说章节
             # print chapter[0], chapter[1]
             url = domin + novel[0].replace('index.html', chapter[0])
@@ -83,12 +94,10 @@ for sort in range(1, 10):
             mysql.addChapters(lastrowid, chapter[1], content)
             print u'正在保存  %s  章节到数据库' % chapter[1]
             # break
-            # break
+        Time('  结束时间：%s' % (datetime.datetime.now()))
+        # break
 
 # 统计耗时
 end = datetime.datetime.now()
-output = open('time.txt', 'a')
-output.write('\n------------------------------------- %s -----------------------------------------\n 开始时间：%s'
-             '\n 结束时间：%s\n ' % (time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())), start, end))
-output.write('耗时：' + str(end - start) + '\n')
-output.close()
+Time('\n\n 整站开始时间：%s\n 整站结束时间：%s' %(start, end))
+Time('\n 耗时：' + str(end - start) + '\n')
